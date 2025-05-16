@@ -1,0 +1,19 @@
+<p>Current group: {{ groupIndex() + 1 }}</p>
+@if (isPaused()) {
+  <button (click)="resume()">Resume</button>
+} @else {
+  <button (click)="pause()">Pause</button>
+}
+<p [class]="(isAllottedTimeReached$ | async) ? 'allotted-time-reached' : ''">
+  Time: {{ currentGroupDuration$ | async | toTime }}</p>
+<p>Remaining time per group: {{ remainingDurationPerGroup$ | async | toTime }}</p>
+<button [disabled]="groupIndex() === 0" (click)="updateGroup(-1)">Previous group</button>
+<button [disabled]="groupIndex() === nbGroups - 1" (click)="updateGroup(+1)">Next group</button>
+@if (previousGroups().length) {
+  <p>Previous groups:</p>
+  <ul>
+    @for (previousGroup of previousGroups(); track previousGroup.id) {
+      <li>Group {{ previousGroup.id + 1 }}: {{ previousGroup.duration | toTime }}</li>
+    }
+  </ul>
+}
