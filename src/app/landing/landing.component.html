@@ -1,0 +1,15 @@
+<form [formGroup]="formGroup">
+  <mat-slider min="1" max="20">
+    <input matSliderThumb formControlName="nbGroups" #groups>
+  </mat-slider>
+  <label>Groups: {{ groups.value }}</label>
+
+  <mat-form-field>
+    <mat-label>Deadline</mat-label>
+    <input matInput formControlName="deadline" [matTimepicker]="picker">
+    <mat-timepicker-toggle matIconSuffix [for]="picker"/>
+    <mat-timepicker interval="15min" #picker/>
+  </mat-form-field>
+
+  <button mat-button (click)="createTimer()">Confirm</button>
+</form>
