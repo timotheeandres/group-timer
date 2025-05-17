@@ -17,7 +17,7 @@ import { addDays, addMinutes, constructNow, formatISO, isBefore, roundToNearestM
     ReactiveFormsModule
   ],
   templateUrl: './landing.component.html',
-  styleUrl: './landing.component.css'
+  styleUrl: './landing.component.scss'
 })
 export class LandingComponent {
   protected readonly minGroups = 1;

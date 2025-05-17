@@ -1,20 +1,38 @@
-<button (click)="backToLanding()">Back</button>
+<button mat-fab (click)="backToLanding()">
+  <mat-icon>close</mat-icon>
+</button>
 <p>Current group: {{ groupIndex() + 1 }}/{{ nbGroups }}</p>
 @if (isPaused()) {
-  <button (click)="resume()">Resume</button>
+  <button mat-fab (click)="resume()">
+    <mat-icon>play_circle</mat-icon>
+  </button>
 } @else {
-  <button (click)="pause()">Pause</button>
+  <button mat-fab (click)="pause()">
+    <mat-icon>pause_circle</mat-icon>
+  </button>
 }
-<p [class]="(isAllottedTimeReached$ | async) ? 'allotted-time-reached' : ''">
-  Time: {{ currentGroupDuration$ | async | toTime }}</p>
+<div id="time" [class]="(isAllottedTimeReached$ | async) ? 'allotted-time-reached' : ''">
+  {{ currentGroupDuration$ | async | toTime }}
+</div>
 <p>Remaining time per group: {{ remainingDurationPerGroup$ | async | toTime }}</p>
-<button [disabled]="groupIndex() === 0" (click)="updateGroup(-1)">Previous group</button>
-<button [disabled]="groupIndex() === nbGroups - 1" (click)="updateGroup(+1)">Next group</button>
-@if (previousGroups().length) {
-  <p>Previous groups:</p>
-  <ul>
-    @for (previousGroup of previousGroups(); track previousGroup.id) {
-      <li>Group {{ previousGroup.id + 1 }}: {{ previousGroup.duration | toTime }}</li>
-    }
-  </ul>
+<button mat-flat-button [disabled]="groupIndex() === 0" (click)="updateGroup(-1)">
+  Previous group
+</button>
+<button mat-flat-button [disabled]="groupIndex() === nbGroups - 1" (click)="updateGroup(+1)">
+  Next group
+</button>
+
+@if (previousGroupsData().length) {
+  <h2>Previous groups:</h2>
+  <mat-table [dataSource]="previousGroupsData()">
+    <mat-text-column name="id" headerText="Group #"></mat-text-column>
+
+    <ng-container matColumnDef="duration">
+      <th mat-header-cell *matHeaderCellDef>Time</th>
+      <td mat-cell *matCellDef="let data"> {{ data.duration | toTime }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="previousGroupsColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: previousGroupsColumns;"></tr>
+  </mat-table>
 }

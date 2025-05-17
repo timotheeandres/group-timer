@@ -1,5 +1,5 @@
 import { inject, LOCALE_ID, Pipe, PipeTransform } from '@angular/core';
-import { formatDuration, intervalToDuration, Locale } from 'date-fns';
+import { intervalToDuration, Locale } from 'date-fns';
 import { fr, frCH } from 'date-fns/locale';
 
 
@@ -23,6 +23,19 @@ export class ToTimePipe implements PipeTransform {
     const duration = intervalToDuration({ start: 0, end: clampedValue });
     duration.seconds ??= 0;
 
-    return formatDuration(duration, { zero: true, locale: this.locale });
+    // return formatDuration(duration, { zero: true, locale: this.locale });
+
+    let str = `${this.pad(duration.minutes)}:${this.pad(duration.seconds)}`;
+
+    const hours = duration.hours;
+    if (hours) {
+      str = `${this.pad(hours)}:${str}`;
+    }
+
+    return str;
+  }
+
+  pad(value?: number): string {
+    return String(value ?? 0).padStart(2, '0');
   }
 }

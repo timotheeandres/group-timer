@@ -13,12 +13,19 @@ import { AsyncPipe } from '@angular/common';
 import { ToTimePipe } from '../util/pipe/toTime.pipe';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { MatButton, MatFabButton } from '@angular/material/button';
+import { MatTableModule } from '@angular/material/table';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-timer',
   imports: [
     AsyncPipe,
-    ToTimePipe
+    ToTimePipe,
+    MatButton,
+    MatTableModule,
+    MatFabButton,
+    MatIconModule
   ],
   templateUrl: './timer.component.html',
   styleUrl: './timer.component.css'
@@ -33,9 +40,16 @@ export class TimerComponent implements OnInit, OnDestroy {
   protected readonly inputNbGroups = input.required<number | string>({ alias: "groups" });
   protected readonly inputDeadline = input.required<Date | string>({ alias: "deadline" });
 
-  protected readonly isPaused = signal(false);
+  protected readonly isPaused = signal(true);
   protected readonly groupIndex = signal(0);
-  protected readonly previousGroups = computed(() => this.groups.slice(0, this.groupIndex()).reverse());
+  protected readonly previousGroupsData = computed(() => {
+    return this.groups.map((group, index) => ({
+      id: index + 1,
+      duration: group.elapsedTimeMs
+    })).slice(0, this.groupIndex()).reverse();
+  });
+
+  protected readonly previousGroupsColumns = [ 'id', 'duration' ] as const;
 
   protected groups: Array<Group> = [];
   protected nbGroups: number = 0;
@@ -77,10 +91,8 @@ export class TimerComponent implements OnInit, OnDestroy {
 
     if (!this.restoreData()) {
       for (let i = 0; i < this.nbGroups; i++) {
-        this.groups.push(new Group(i));
+        this.groups.push(new Group(i + 1));
       }
-
-      this.resume();
     }
 
     this.saveInterval = setInterval(() => this.saveData(), TimerComponent.SAVE_PERIOD_MS);
@@ -153,7 +165,7 @@ export class TimerComponent implements OnInit, OnDestroy {
       const deadline = parseJSON(data.deadline);
       if (data.groups.length === this.nbGroups && isEqual(deadline, this.deadline)) {
         this.groups = data.groups.map(groupData =>
-          new Group(groupData.id, groupData.elapsedTimeMs, groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined));
+          new Group(groupData.elapsedTimeMs, groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined));
         this.deadline = deadline;
         this.isPaused.set(data.isPaused);
         this.groupIndex.set(data.groupIndex);
@@ -170,7 +182,7 @@ export class TimerComponent implements OnInit, OnDestroy {
 }
 
 class Group {
-  constructor(readonly id: number, public elapsedTimeMs: number = 0, public lastResume?: Date) {
+  constructor(public elapsedTimeMs: number = 0, public lastResume?: Date) {
   }
 
   get duration(): number {
@@ -197,7 +209,7 @@ class Group {
 
 
 type SaveData = {
-  groups: Array<{ elapsedTimeMs: number, lastResume?: string, id: number }>,
+  groups: Array<{ elapsedTimeMs: number, lastResume?: string }>,
   deadline: string,
   isPaused: boolean,
   groupIndex: number

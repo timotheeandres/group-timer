@@ -1,3 +1,10 @@
 .allotted-time-reached {
   color: red;
 }
+
+#time {
+  width: 100%;
+  font-size: 50pt;
+  text-align: center;
+  margin: 10px auto;
+}
