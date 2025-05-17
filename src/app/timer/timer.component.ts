@@ -1,7 +1,14 @@
-import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
-import { Group } from './group';
+import { Component, computed, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
 import { combineLatest, distinctUntilChanged, interval, map, share, shareReplay, startWith } from 'rxjs';
-import { constructNow, differenceInMilliseconds, subMilliseconds } from 'date-fns';
+import {
+  constructNow,
+  differenceInMilliseconds,
+  formatISO,
+  isEqual,
+  parseISO,
+  parseJSON,
+  subMilliseconds
+} from 'date-fns';
 import { AsyncPipe } from '@angular/common';
 import { ToTimePipe } from '../util/pipe/toTime.pipe';
 import { toObservable } from '@angular/core/rxjs-interop';
@@ -16,13 +23,15 @@ import { Router } from '@angular/router';
   templateUrl: './timer.component.html',
   styleUrl: './timer.component.css'
 })
-export class TimerComponent implements OnInit {
+export class TimerComponent implements OnInit, OnDestroy {
   private static readonly TICK_MS = 100;
+  private static readonly SAVE_PERIOD_MS = 2000;
+  private static readonly LOCAL_STORAGE_KEY = 'timer-data';
 
   protected readonly router = inject(Router);
 
-  protected readonly inputNbGroups = input.required<number>({ alias: "groups" });
-  protected readonly inputDeadline = input.required<Date>({ alias: "deadline" });
+  protected readonly inputNbGroups = input.required<number | string>({ alias: "groups" });
+  protected readonly inputDeadline = input.required<Date | string>({ alias: "deadline" });
 
   protected readonly isPaused = signal(false);
   protected readonly groupIndex = signal(0);
@@ -33,6 +42,8 @@ export class TimerComponent implements OnInit {
   protected deadline: Date = new Date();
 
   private readonly refresh$ = combineLatest([ toObservable(this.groupIndex), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
+
+  private saveInterval?: number;
 
   readonly currentGroupDuration$ = this.refresh$.pipe(
     map(() => this.currentGroup.duration),
@@ -55,18 +66,28 @@ export class TimerComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.nbGroups = this.inputNbGroups();
-    this.deadline = this.inputDeadline();
+    const inputNbGroups = this.inputNbGroups();
+    const inputDeadline = this.inputDeadline();
+    this.nbGroups = +inputNbGroups;
+    this.deadline = typeof inputDeadline === 'string' ? parseISO(inputDeadline) : inputDeadline;
 
     if (this.nbGroups <= 0) {
       throw new Error("The number of groups cannot be less than 1");
     }
 
-    for (let i = 0; i < this.nbGroups; i++) {
-      this.groups.push(new Group(i));
+    if (!this.restoreData()) {
+      for (let i = 0; i < this.nbGroups; i++) {
+        this.groups.push(new Group(i));
+      }
+
+      this.resume();
     }
 
-    this.resume();
+    this.saveInterval = setInterval(() => this.saveData(), TimerComponent.SAVE_PERIOD_MS);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.saveInterval);
   }
 
   resume() {
@@ -89,6 +110,7 @@ export class TimerComponent implements OnInit {
   }
 
   protected async backToLanding() {
+    this.clearData();
     return this.router.navigate([ '/' ]);
   }
 
@@ -106,4 +128,73 @@ export class TimerComponent implements OnInit {
 
     return Math.min(theoreticalDurationPerGroup, remainingDurationPerWaitingGroup);
   }
+
+  private saveData() {
+    const data: SaveData = {
+      groups: this.groups.map(group => ({
+        ...group,
+        lastResume: group.lastResume !== undefined ? formatISO(group.lastResume) : undefined
+      })),
+      deadline: formatISO(this.deadline),
+      isPaused: this.isPaused(),
+      groupIndex: this.groupIndex(),
+    };
+    sessionStorage.setItem(TimerComponent.LOCAL_STORAGE_KEY, JSON.stringify(data));
+  }
+
+  private restoreData(): boolean {
+    const rawData = sessionStorage.getItem(TimerComponent.LOCAL_STORAGE_KEY);
+    if (rawData !== null) {
+      const data: SaveData = JSON.parse(rawData);
+      const deadline = parseJSON(data.deadline);
+      if (data.groups.length === this.nbGroups && isEqual(deadline, this.deadline)) {
+        this.groups = data.groups.map(groupData =>
+          new Group(groupData.id, groupData.elapsedTimeMs, groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined));
+        this.deadline = deadline;
+        this.isPaused.set(data.isPaused);
+        this.groupIndex.set(data.groupIndex);
+
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private clearData() {
+    sessionStorage.clear();
+  }
 }
+
+class Group {
+  constructor(readonly id: number, public elapsedTimeMs: number = 0, public lastResume?: Date) {
+  }
+
+  get duration(): number {
+    let duration = this.elapsedTimeMs;
+    if (this.lastResume) {
+      duration += differenceInMilliseconds(constructNow(undefined), this.lastResume);
+    }
+    return duration;
+  }
+
+  resume() {
+    if (!this.lastResume) {
+      this.lastResume = constructNow(undefined);
+    }
+  }
+
+  pause() {
+    if (this.lastResume) {
+      this.elapsedTimeMs += differenceInMilliseconds(constructNow(undefined), this.lastResume);
+      this.lastResume = undefined;
+    }
+  }
+}
+
+
+type SaveData = {
+  groups: Array<{ elapsedTimeMs: number, lastResume?: string, id: number }>,
+  deadline: string,
+  isPaused: boolean,
+  groupIndex: number
+};
