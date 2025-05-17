@@ -5,7 +5,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Router } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { addDays, constructNow, formatISO, isBefore, roundToNearestMinutes } from 'date-fns';
+import { addDays, addMinutes, constructNow, formatISO, isBefore, roundToNearestMinutes } from 'date-fns';
 
 @Component({
   selector: 'app-landing',
@@ -25,25 +25,34 @@ export class LandingComponent {
 
   protected router = inject(Router);
 
+  get nextClosestQuarter(): Date {
+    return roundToNearestMinutes(addMinutes(constructNow(undefined), 5), {
+      nearestTo: 15,
+      roundingMethod: "ceil"
+    });
+  }
+
   protected readonly formGroup = new FormGroup(
     {
       nbGroups: new FormControl(5, { validators: [ Validators.required, Validators.min(this.minGroups), Validators.max(this.maxGroups) ] }),
-      deadline: new FormControl(roundToNearestMinutes(constructNow(undefined), {
-        nearestTo: 15,
-        roundingMethod: "ceil"
-      }), { validators: [ Validators.required ] })
+      deadline: new FormControl(this.nextClosestQuarter, { validators: [ Validators.required ] })
     }
   );
 
   async createTimer() {
     let deadline = this.formGroup.value.deadline;
+    const nbGroups = this.formGroup.value.nbGroups;
+    if (this.formGroup.invalid || !deadline || !nbGroups) {
+      return;
+    }
+
     if (isBefore(deadline, constructNow(undefined))) {
       deadline = addDays(deadline, 1);
     }
 
     await this.router.navigate([ 'timer' ], {
       queryParams: {
-        groups: this.formGroup.value.nbGroups,
+        groups: nbGroups,
         deadline: formatISO(deadline)
       }
     });
