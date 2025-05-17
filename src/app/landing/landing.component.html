@@ -1,5 +1,5 @@
 <form [formGroup]="formGroup">
-  <mat-slider min="1" max="20">
+  <mat-slider [min]="minGroups" [max]="maxGroups">
     <input matSliderThumb formControlName="nbGroups" #groups>
   </mat-slider>
   <label>Groups: {{ groups.value }}</label>
