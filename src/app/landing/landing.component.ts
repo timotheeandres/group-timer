@@ -5,7 +5,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Router } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { constructNow, roundToNearestMinutes } from 'date-fns';
+import { constructNow, formatISO, roundToNearestMinutes } from 'date-fns';
 
 @Component({
   selector: 'app-landing',
@@ -33,7 +33,7 @@ export class LandingComponent {
     await this.router.navigate([ 'timer' ], {
       queryParams: {
         groups: this.formGroup.value.nbGroups,
-        deadline: this.formGroup.value.deadline
+        deadline: formatISO(this.formGroup.value.deadline)
       }
     });
   }

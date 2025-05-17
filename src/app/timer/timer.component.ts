@@ -23,7 +23,7 @@ export class TimerComponent implements OnInit {
 
   protected readonly isPaused = signal(false);
   protected readonly groupIndex = signal(0);
-  protected readonly previousGroups = computed(() => this.computePreviousGroups());
+  protected readonly previousGroups = computed(() => this.groups.slice(0, this.groupIndex()).reverse());
 
   protected groups: Array<Group> = [];
   protected nbGroups: number = 0;
@@ -98,9 +98,5 @@ export class TimerComponent implements OnInit {
     const remainingDurationPerWaitingGroup = differenceInMilliseconds(this.deadline, now) / nbGroupsWaiting;
 
     return Math.min(theoreticalDurationPerGroup, remainingDurationPerWaitingGroup);
-  }
-
-  private computePreviousGroups(): Array<Group> {
-    return this.groups.slice(0, this.groupIndex()).reverse();
   }
 }
