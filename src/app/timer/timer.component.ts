@@ -1,10 +1,11 @@
-import { Component, computed, input, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { Group } from './group';
 import { combineLatest, distinctUntilChanged, interval, map, share, shareReplay, startWith } from 'rxjs';
 import { constructNow, differenceInMilliseconds, subMilliseconds } from 'date-fns';
 import { AsyncPipe } from '@angular/common';
 import { ToTimePipe } from '../util/pipe/toTime.pipe';
 import { toObservable } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-timer',
@@ -17,6 +18,8 @@ import { toObservable } from '@angular/core/rxjs-interop';
 })
 export class TimerComponent implements OnInit {
   private static readonly TICK_MS = 100;
+
+  protected readonly router = inject(Router);
 
   protected readonly inputNbGroups = input.required<number>({ alias: "groups" });
   protected readonly inputDeadline = input.required<Date>({ alias: "deadline" });
@@ -83,6 +86,10 @@ export class TimerComponent implements OnInit {
       this.groupIndex.set(nextIndex);
       this.resume();
     }
+  }
+
+  protected async backToLanding() {
+    return this.router.navigate([ '/' ]);
   }
 
   private computeRemainingDurationForWaitingGroups(currentGroupDuration: number): number {
