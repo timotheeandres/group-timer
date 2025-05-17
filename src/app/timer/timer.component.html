@@ -1,5 +1,5 @@
 <button (click)="backToLanding()">Back</button>
-<p>Current group: {{ groupIndex() + 1 }}</p>
+<p>Current group: {{ groupIndex() + 1 }}/{{ nbGroups }}</p>
 @if (isPaused()) {
   <button (click)="resume()">Resume</button>
 } @else {
