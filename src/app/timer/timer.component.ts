@@ -102,9 +102,13 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   updateGroup(delta: number) {
     const nextIndex = this.groupIndex() + delta;
-    if (0 <= nextIndex && nextIndex <= this.nbGroups - 1) {
-      this.pause();
-      this.groupIndex.set(nextIndex);
+    if (!(0 <= nextIndex && nextIndex <= this.nbGroups - 1)) {
+      return;
+    }
+    const wasPaused = this.isPaused();
+    this.pause();
+    this.groupIndex.set(nextIndex);
+    if (!wasPaused) {
       this.resume();
     }
   }
