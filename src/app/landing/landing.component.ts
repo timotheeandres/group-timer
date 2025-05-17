@@ -5,7 +5,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Router } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { constructNow, formatISO, roundToNearestMinutes } from 'date-fns';
+import { addDays, constructNow, formatISO, isBefore, roundToNearestMinutes } from 'date-fns';
 
 @Component({
   selector: 'app-landing',
@@ -36,10 +36,15 @@ export class LandingComponent {
   );
 
   async createTimer() {
+    let deadline = this.formGroup.value.deadline;
+    if (isBefore(deadline, constructNow(undefined))) {
+      deadline = addDays(deadline, 1);
+    }
+
     await this.router.navigate([ 'timer' ], {
       queryParams: {
         groups: this.formGroup.value.nbGroups,
-        deadline: formatISO(this.formGroup.value.deadline)
+        deadline: formatISO(deadline)
       }
     });
   }
