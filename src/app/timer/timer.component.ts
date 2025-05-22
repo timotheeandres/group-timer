@@ -57,6 +57,8 @@ export class TimerComponent implements OnInit, OnDestroy {
   protected nbGroups: number = 0;
   protected deadline: Date = new Date();
 
+  protected wakeLock?: Promise<WakeLockSentinel>;
+
   private readonly refresh$ = combineLatest([ toObservable(this.groupIndex), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
 
   private saveInterval?: number;
@@ -102,16 +104,19 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.saveInterval);
+    void this.releaseWakeLock();
   }
 
   resume() {
     this.currentGroup.resume();
     this.isPaused.set(false);
+    void this.requestWakeLock();
   }
 
   pause() {
     this.currentGroup.pause();
     this.isPaused.set(true);
+    void this.releaseWakeLock();
   }
 
   updateGroup(delta: number) {
@@ -180,6 +185,24 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   private clearData() {
     TimerComponent.STORAGE.clear();
+  }
+
+  private async requestWakeLock(): Promise<void> {
+    this.wakeLock = navigator.wakeLock.request();
+
+    try {
+      await this.wakeLock;
+    } catch (error) {
+      console.warn("WakeLock failed:", error);
+    }
+  }
+
+  private async releaseWakeLock(): Promise<void> {
+    if (this.wakeLock) {
+      const release = (await this.wakeLock).release();
+      this.wakeLock = undefined;
+      await release;
+    }
   }
 }
 
