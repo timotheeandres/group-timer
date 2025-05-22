@@ -33,7 +33,9 @@ import { MatIconModule } from '@angular/material/icon';
 export class TimerComponent implements OnInit, OnDestroy {
   private static readonly TICK_MS = 100;
   private static readonly SAVE_PERIOD_MS = 2000;
-  private static readonly LOCAL_STORAGE_KEY = 'timer-data';
+  private static readonly STORAGE_KEY = 'timer-data';
+
+  private static readonly STORAGE: Storage = localStorage;
 
   protected readonly router = inject(Router);
 
@@ -155,11 +157,11 @@ export class TimerComponent implements OnInit, OnDestroy {
       isPaused: this.isPaused(),
       groupIndex: this.groupIndex(),
     };
-    sessionStorage.setItem(TimerComponent.LOCAL_STORAGE_KEY, JSON.stringify(data));
+    TimerComponent.STORAGE.setItem(TimerComponent.STORAGE_KEY, JSON.stringify(data));
   }
 
   private restoreData(): boolean {
-    const rawData = sessionStorage.getItem(TimerComponent.LOCAL_STORAGE_KEY);
+    const rawData = TimerComponent.STORAGE.getItem(TimerComponent.STORAGE_KEY);
     if (rawData !== null) {
       const data: SaveData = JSON.parse(rawData);
       const deadline = parseJSON(data.deadline);
@@ -177,7 +179,7 @@ export class TimerComponent implements OnInit, OnDestroy {
   }
 
   private clearData() {
-    sessionStorage.clear();
+    TimerComponent.STORAGE.clear();
   }
 }
 
