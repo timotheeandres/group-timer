@@ -132,7 +132,14 @@ export class TimerComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected async backToLanding() {
+  protected async backToLanding(ev: MouseEvent) {
+    ev.preventDefault();
+
+    const shouldClose = confirm("Are you sure you want to leave? Your timers will be lost.");
+    if (!shouldClose) {
+      return;
+    }
+
     this.clearData();
     return this.router.navigate([ '/' ]);
   }
