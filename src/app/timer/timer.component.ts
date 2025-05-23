@@ -225,6 +225,7 @@ export class TimerComponent implements OnInit, OnDestroy {
 }
 
 class Group {
+  // eslint-disable-next-line no-unused-vars
   constructor(public elapsedTimeMs: number = 0, public lastResume?: Date) {
   }
 
