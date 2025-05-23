@@ -1,5 +1,6 @@
 .allotted-time-reached {
-  color: red;
+  color: white;
+  background-color: darkred;
 }
 
 #time {
