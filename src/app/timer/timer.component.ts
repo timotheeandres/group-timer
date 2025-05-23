@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
 import { combineLatest, distinctUntilChanged, interval, map, share, shareReplay, startWith } from 'rxjs';
 import {
   constructNow,
@@ -38,6 +38,17 @@ export class TimerComponent implements OnInit, OnDestroy {
   private static readonly STORAGE: Storage = localStorage;
 
   protected readonly router = inject(Router);
+
+  private lockWasTakenBeforeVisibilityChange: boolean = false;
+
+  @HostListener('document:visibilitychange')
+  protected visibilitychange() {
+    if (document.visibilityState === 'hidden') {
+      this.lockWasTakenBeforeVisibilityChange = this.wakeLock !== undefined;
+    } else if (document.visibilityState === 'visible' && this.lockWasTakenBeforeVisibilityChange) {
+      void this.requestWakeLock();
+    }
+  }
 
   protected readonly inputNbGroups = input.required<number | string>({ alias: "groups" });
   protected readonly inputDeadline = input.required<Date | string>({ alias: "deadline" });
@@ -195,6 +206,10 @@ export class TimerComponent implements OnInit, OnDestroy {
   }
 
   private async requestWakeLock(): Promise<void> {
+    if (this.wakeLock && !(await this.wakeLock).released) {
+      return;
+    }
+
     this.wakeLock = navigator.wakeLock.request();
 
     try {
