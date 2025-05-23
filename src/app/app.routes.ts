@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
-import { TimerComponent } from './timer/timer.component';
-import { LandingComponent } from './landing/landing.component';
 
 export const routes: Routes = [
-  { path: 'timer', component: TimerComponent },
-  { path: '', component: LandingComponent, pathMatch: 'full' },
+  { path: 'timer', loadComponent: () => import('./timer/timer.component').then(m => m.TimerComponent) },
+  {
+    path: '',
+    loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
+    pathMatch: 'full'
+  },
 ];
