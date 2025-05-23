@@ -32,7 +32,6 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class TimerComponent implements OnInit, OnDestroy {
   private static readonly TICK_MS = 100;
-  private static readonly SAVE_PERIOD_MS = 2000;
   private static readonly STORAGE_KEY = 'timer-data';
 
   private static readonly STORAGE: Storage = localStorage;
@@ -72,8 +71,6 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   private readonly refresh$ = combineLatest([ toObservable(this.groupIndex), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
 
-  private saveInterval?: number;
-
   readonly currentGroupDuration$ = this.refresh$.pipe(
     map(() => this.currentGroup.duration),
     shareReplay(1)
@@ -109,25 +106,23 @@ export class TimerComponent implements OnInit, OnDestroy {
         this.groups.push(new Group(i + 1));
       }
     }
-
-    this.saveInterval = setInterval(() => this.saveData(), TimerComponent.SAVE_PERIOD_MS);
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.saveInterval);
-    void this.releaseWakeLock();
   }
 
   resume() {
     this.currentGroup.resume();
     this.isPaused.set(false);
     void this.requestWakeLock();
+    this.saveData();
   }
 
   pause() {
     this.currentGroup.pause();
     this.isPaused.set(true);
     void this.releaseWakeLock();
+    this.saveData();
   }
 
   updateGroup(delta: number) {
@@ -141,6 +136,7 @@ export class TimerComponent implements OnInit, OnDestroy {
     if (!wasPaused) {
       this.resume();
     }
+    this.saveData();
   }
 
   protected async backToLanding(ev: MouseEvent) {
