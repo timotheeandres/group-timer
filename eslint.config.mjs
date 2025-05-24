@@ -14,7 +14,8 @@ export default defineConfig([
       "no-unused-vars": [ "error", {
         varsIgnorePattern: "^_$",
         argsIgnorePattern: "^_$",
-        destructuredArrayIgnorePattern: "^_$"
+        destructuredArrayIgnorePattern: "^_$",
+        caughtErrorsIgnorePattern: "^_$"
       } ],
       "array-bracket-newline": [ "warn", "consistent" ],
       "array-element-newline": [ "warn", "consistent" ],
