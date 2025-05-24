@@ -54,16 +54,11 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   protected readonly isPaused = signal(true);
   protected readonly groupIndex = signal(0);
-  protected readonly previousGroupsData = computed(() => {
-    return this.groups.map((group, index) => ({
-      id: index + 1,
-      duration: group.elapsedTimeMs
-    })).slice(0, this.groupIndex()).reverse();
-  });
+  protected readonly groups = signal<Group[]>([]);
+  protected readonly currentGroup = computed(() => this.groups()[this.groupIndex()]);
 
   protected readonly previousGroupsColumns = [ 'id', 'duration', 'actions' ] as const;
 
-  protected groups: Array<Group> = [];
   protected nbGroups: number = 0;
   protected deadline: Date = new Date();
 
@@ -72,7 +67,7 @@ export class TimerComponent implements OnInit, OnDestroy {
   private readonly refresh$ = combineLatest([ toObservable(this.groupIndex), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
 
   readonly currentGroupDuration$ = this.refresh$.pipe(
-    map(() => this.currentGroup.duration),
+    map(() => this.currentGroup().duration),
     shareReplay(1)
   );
   readonly remainingDurationPerGroup$ = this.currentGroupDuration$.pipe(startWith(0))
@@ -87,10 +82,6 @@ export class TimerComponent implements OnInit, OnDestroy {
         map(([ duration, remaining ]) => duration >= remaining)
       );
 
-  get currentGroup(): Group {
-    return this.groups[this.groupIndex()];
-  }
-
   ngOnInit(): void {
     const inputNbGroups = this.inputNbGroups();
     const inputDeadline = this.inputDeadline();
@@ -102,9 +93,13 @@ export class TimerComponent implements OnInit, OnDestroy {
     }
 
     if (!this.restoreData()) {
+      const groups = [];
+
       for (let i = 0; i < this.nbGroups; i++) {
-        this.groups.push(new Group(i + 1));
+        groups.push(new Group(i + 1));
       }
+
+      this.groups.set(groups);
     }
   }
 
@@ -112,14 +107,14 @@ export class TimerComponent implements OnInit, OnDestroy {
   }
 
   resume() {
-    this.currentGroup.resume();
+    this.currentGroup().resume();
     this.isPaused.set(false);
     void this.requestWakeLock();
     this.saveData();
   }
 
   pause() {
-    this.currentGroup.pause();
+    this.currentGroup().pause();
     this.isPaused.set(true);
     void this.releaseWakeLock();
     this.saveData();
@@ -174,7 +169,7 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   private saveData() {
     const data: SaveData = {
-      groups: this.groups.map(group => ({
+      groups: this.groups().map(group => ({
         ...group,
         lastResume: group.lastResume !== undefined ? formatISO(group.lastResume) : undefined
       })),
@@ -191,12 +186,13 @@ export class TimerComponent implements OnInit, OnDestroy {
       const data: SaveData = JSON.parse(rawData);
       const deadline = parseJSON(data.deadline);
       if (data.groups.length === this.nbGroups && isEqual(deadline, this.deadline)) {
-        this.groups = data.groups.map(groupData => {
+        const groups = data.groups.map(groupData => {
           const elapsedTime = groupData.elapsedTimeMs;
           const lastResume = groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined;
           const name = groupData.name;
           return new Group(elapsedTime, lastResume, name);
         });
+        this.groups.set(groups);
         this.deadline = deadline;
         this.isPaused.set(data.isPaused);
         this.groupIndex.set(data.groupIndex);
