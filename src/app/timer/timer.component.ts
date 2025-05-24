@@ -1,21 +1,15 @@
-import { Component, computed, HostListener, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, input, OnInit, signal } from '@angular/core';
 import { combineLatest, distinctUntilChanged, interval, map, share, shareReplay, startWith } from 'rxjs';
-import {
-  constructNow,
-  differenceInMilliseconds,
-  formatISO,
-  isEqual,
-  parseISO,
-  parseJSON,
-  subMilliseconds
-} from 'date-fns';
+import { constructNow, differenceInMilliseconds, subMilliseconds } from 'date-fns';
 import { AsyncPipe } from '@angular/common';
 import { ToTimePipe } from '../util/pipe/toTime.pipe';
+import { StorageService, TimerData, TimerId } from '../util/storage.service';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButton, MatFabButton } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
+import { Group } from '../model/group';
 
 @Component({
   selector: 'app-timer',
@@ -25,18 +19,17 @@ import { MatIconModule } from '@angular/material/icon';
     MatButton,
     MatTableModule,
     MatFabButton,
-    MatIconModule
+    MatIconModule,
+    RouterLink
   ],
   templateUrl: './timer.component.html',
   styleUrl: './timer.component.css'
 })
-export class TimerComponent implements OnInit, OnDestroy {
+export class TimerComponent implements OnInit {
   private static readonly TICK_MS = 100;
-  private static readonly STORAGE_KEY = 'timer-data';
 
-  private static readonly STORAGE: Storage = localStorage;
-
-  protected readonly router = inject(Router);
+  private readonly router = inject(Router);
+  private readonly storageService = inject(StorageService);
 
   private lockWasTakenBeforeVisibilityChange: boolean = false;
 
@@ -49,8 +42,7 @@ export class TimerComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected readonly inputNbGroups = input.required<number | string>({ alias: "groups" });
-  protected readonly inputDeadline = input.required<Date | string>({ alias: "deadline" });
+  protected readonly timerId = input.required<TimerId>();
 
   protected readonly isPaused = signal(true);
   protected readonly groupIndex = signal(0);
@@ -59,12 +51,11 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   protected readonly previousGroupsColumns = [ 'id', 'duration', 'actions' ] as const;
 
-  protected nbGroups: number = 0;
   protected deadline: Date = new Date();
 
-  protected wakeLock?: Promise<WakeLockSentinel>;
+  private wakeLock?: Promise<WakeLockSentinel>;
 
-  private readonly refresh$ = combineLatest([ toObservable(this.groupIndex), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
+  private readonly refresh$ = combineLatest([ toObservable(this.currentGroup), interval(TimerComponent.TICK_MS) ]).pipe(startWith(null), share());
 
   readonly currentGroupDuration$ = this.refresh$.pipe(
     map(() => this.currentGroup().duration),
@@ -83,27 +74,10 @@ export class TimerComponent implements OnInit, OnDestroy {
       );
 
   ngOnInit(): void {
-    const inputNbGroups = this.inputNbGroups();
-    const inputDeadline = this.inputDeadline();
-    this.nbGroups = +inputNbGroups;
-    this.deadline = typeof inputDeadline === 'string' ? parseISO(inputDeadline) : inputDeadline;
-
-    if (this.nbGroups <= 0) {
-      throw new Error("The number of groups cannot be less than 1");
-    }
-
     if (!this.restoreData()) {
-      const groups = [];
-
-      for (let i = 0; i < this.nbGroups; i++) {
-        groups.push(new Group(i + 1));
-      }
-
-      this.groups.set(groups);
+      console.error(`Could not restore timer data for id ${this.timerId()}`);
+      void this.router.navigate([ '/' ], { replaceUrl: true });
     }
-  }
-
-  ngOnDestroy(): void {
   }
 
   resume() {
@@ -121,7 +95,7 @@ export class TimerComponent implements OnInit, OnDestroy {
   }
 
   selectGroup(index: number) {
-    if (!(0 <= index && index <= this.nbGroups - 1)) {
+    if (!(0 <= index && index <= this.groups().length - 1)) {
       return;
     }
     const wasPaused = this.isPaused();
@@ -141,18 +115,6 @@ export class TimerComponent implements OnInit, OnDestroy {
     this.selectGroup(this.groupIndex() - 1);
   }
 
-  protected async backToLanding(ev: MouseEvent) {
-    ev.preventDefault();
-
-    const shouldClose = confirm("Are you sure you want to leave? Your timers will be lost.");
-    if (!shouldClose) {
-      return;
-    }
-
-    this.clearData();
-    return this.router.navigate([ '/' ]);
-  }
-
   protected renameGroup(group: Group, index: number): void {
     const newName = prompt(`New group name for group ${group.name ? `"${group.name}"` : index + 1}:`);
     group.name = (newName ?? group.name) || undefined;
@@ -161,7 +123,7 @@ export class TimerComponent implements OnInit, OnDestroy {
 
   private computeRemainingDurationForWaitingGroups(currentGroupDuration: number): number {
     const now = constructNow(undefined);
-    const nbGroupsWaiting = this.nbGroups - this.groupIndex() - 1;
+    const nbGroupsWaiting = this.groups().length - this.groupIndex() - 1;
     const currentGroupStart = subMilliseconds(now, currentGroupDuration);
 
     if (nbGroupsWaiting === 0) {
@@ -175,43 +137,33 @@ export class TimerComponent implements OnInit, OnDestroy {
   }
 
   private saveData() {
-    const data: SaveData = {
-      groups: this.groups().map(group => ({
-        ...group,
-        lastResume: group.lastResume !== undefined ? formatISO(group.lastResume) : undefined
-      })),
-      deadline: formatISO(this.deadline),
+    const data: TimerData = {
+      groups: this.groups(),
+      deadline: this.deadline,
       isPaused: this.isPaused(),
       groupIndex: this.groupIndex(),
     };
-    TimerComponent.STORAGE.setItem(TimerComponent.STORAGE_KEY, JSON.stringify(data));
+    this.storageService.storeTimerData(this.timerId(), data);
   }
 
   private restoreData(): boolean {
-    const rawData = TimerComponent.STORAGE.getItem(TimerComponent.STORAGE_KEY);
-    if (rawData !== null) {
-      const data: SaveData = JSON.parse(rawData);
-      const deadline = parseJSON(data.deadline);
-      if (data.groups.length === this.nbGroups && isEqual(deadline, this.deadline)) {
-        const groups = data.groups.map(groupData => {
-          const elapsedTime = groupData.elapsedTimeMs;
-          const lastResume = groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined;
-          const name = groupData.name;
-          return new Group(elapsedTime, lastResume, name);
-        });
-        this.groups.set(groups);
-        this.deadline = deadline;
-        this.isPaused.set(data.isPaused);
-        this.groupIndex.set(data.groupIndex);
+    const data = this.storageService.getTimerData(this.timerId());
+    if (data) {
+      const deadline = data.deadline;
+      const groups = data.groups.map(groupData => {
+        const elapsedTime = groupData.elapsedTimeMs;
+        const lastResume = groupData.lastResume;
+        const name = groupData.name;
+        return new Group(elapsedTime, lastResume, name);
+      });
+      this.groups.set(groups);
+      this.deadline = deadline;
+      this.isPaused.set(data.isPaused);
+      this.groupIndex.set(data.groupIndex);
 
-        return true;
-      }
+      return true;
     }
     return false;
-  }
-
-  private clearData() {
-    TimerComponent.STORAGE.clear();
   }
 
   private async requestWakeLock(): Promise<void> {
@@ -236,38 +188,3 @@ export class TimerComponent implements OnInit, OnDestroy {
     }
   }
 }
-
-class Group {
-  // eslint-disable-next-line no-unused-vars
-  constructor(public elapsedTimeMs: number = 0, public lastResume?: Date, public name?: string) {
-  }
-
-  get duration(): number {
-    let duration = this.elapsedTimeMs;
-    if (this.lastResume) {
-      duration += differenceInMilliseconds(constructNow(undefined), this.lastResume);
-    }
-    return duration;
-  }
-
-  resume() {
-    if (!this.lastResume) {
-      this.lastResume = constructNow(undefined);
-    }
-  }
-
-  pause() {
-    if (this.lastResume) {
-      this.elapsedTimeMs += differenceInMilliseconds(constructNow(undefined), this.lastResume);
-      this.lastResume = undefined;
-    }
-  }
-}
-
-
-type SaveData = {
-  groups: Array<{ elapsedTimeMs: number, lastResume?: string, name?: string }>,
-  deadline: string,
-  isPaused: boolean,
-  groupIndex: number
-};

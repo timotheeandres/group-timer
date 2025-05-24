@@ -1,11 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTimepickerModule } from '@angular/material/timepicker';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { addDays, addMinutes, constructNow, formatISO, isBefore, roundToNearestMinutes } from 'date-fns';
+import { addDays, addMinutes, constructNow, isBefore, roundToNearestMinutes } from 'date-fns';
+import { StorageService, TimerData, TimerId } from '../util/storage.service';
+import { Group } from '../model/group';
+import { ToReadableDateTimePipe } from '../util/pipe/toReadableDateTime.pipe';
 
 @Component({
   selector: 'app-landing',
@@ -14,16 +17,21 @@ import { addDays, addMinutes, constructNow, formatISO, isBefore, roundToNearestM
     MatButtonModule,
     MatSliderModule,
     MatTimepickerModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    RouterLink,
+    ToReadableDateTimePipe
   ],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
   protected readonly minGroups = 1;
   protected readonly maxGroups = 15;
 
-  protected router = inject(Router);
+  private readonly router = inject(Router);
+  private readonly storageService = inject(StorageService);
+
+  protected existingTimers: Array<[TimerId, TimerData]> = [];
 
   get nextClosestQuarter(): Date {
     return roundToNearestMinutes(addMinutes(constructNow(undefined), 5), {
@@ -39,6 +47,10 @@ export class LandingComponent {
     }
   );
 
+  ngOnInit(): void {
+    this.existingTimers = [ ...this.storageService.getAllTimerData().entries() ];
+  }
+
   async createTimer() {
     let deadline = this.formGroup.value.deadline;
     const nbGroups = this.formGroup.value.nbGroups;
@@ -50,11 +62,18 @@ export class LandingComponent {
       deadline = addDays(deadline, 1);
     }
 
-    await this.router.navigate([ 'timer' ], {
-      queryParams: {
-        groups: nbGroups,
-        deadline: formatISO(deadline)
-      }
+    const groups = [];
+    for (let i = 0; i < nbGroups; ++i) {
+      groups.push(new Group());
+    }
+
+    const timerId = this.storageService.newTimerData({
+      groups: groups,
+      deadline: deadline,
+      groupIndex: 0,
+      isPaused: true
     });
+
+    await this.router.navigate([ 'timer', timerId ]);
   }
 }

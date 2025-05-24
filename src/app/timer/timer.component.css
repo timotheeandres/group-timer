@@ -9,3 +9,7 @@
   text-align: center;
   margin: 10px auto;
 }
+
+.mat-mdc-header-row, .mat-mdc-row {
+  vertical-align: middle;
+}

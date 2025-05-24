@@ -1,7 +1,7 @@
-<button mat-fab (click)="backToLanding($event)">
+<button mat-fab [routerLink]="'/'">
   <mat-icon>close</mat-icon>
 </button>
-<p>Current group: {{ groupIndex() + 1 }}/{{ nbGroups }}</p>
+<p>Current group: {{ groupIndex() + 1 }}/{{ this.groups().length }}</p>
 @if (isPaused()) {
   <button mat-fab (click)="resume()">
     <mat-icon>play_circle</mat-icon>
@@ -18,7 +18,7 @@
 <button mat-flat-button [disabled]="groupIndex() === 0" (click)="previousGroup()">
   Previous group
 </button>
-<button mat-flat-button [disabled]="groupIndex() === nbGroups - 1" (click)="nextGroup()">
+<button mat-flat-button [disabled]="groupIndex() === groups().length - 1" (click)="nextGroup()">
   Next group
 </button>
 
@@ -36,7 +36,7 @@
     </ng-container>
 
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Time</th>
+      <th mat-header-cell *matHeaderCellDef></th>
       <td mat-cell *matCellDef="let group; let i = index;">
         <button mat-button (click)="renameGroup(group, i)">Rename</button>
         <button mat-button (click)="selectGroup(i)">Select</button>

@@ -14,4 +14,18 @@
   </mat-form-field>
 
   <button mat-raised-button (click)="createTimer()">Confirm</button>
+
+  @if (existingTimers.length > 0) {
+    <div>
+      <h2>Existing timers:</h2>
+      @for (timerIdAndData of existingTimers; track timerIdAndData[0]) {
+        @let timerData = timerIdAndData[1];
+        <p>
+          <a [routerLink]="['timer', timerIdAndData[0]]">
+            {{ timerData.groups.length }} groups, ends on {{ timerData.deadline | toReadableDateTime }}
+          </a>
+        </p>
+      }
+    </div>
+  }
 </form>
