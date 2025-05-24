@@ -22,7 +22,7 @@
         @let timerData = timerIdAndData[1];
         <p>
           <a [routerLink]="['timer', timerIdAndData[0]]">
-            {{ timerData.groups.length }} groups, ends on {{ timerData.deadline | toReadableDateTime }}
+            {{ timerData.groups.length }} groups, ends {{ toReadableTime(timerData.deadline) }}
           </a>
         </p>
       }

@@ -5,10 +5,9 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Router, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { addDays, addMinutes, constructNow, isBefore, roundToNearestMinutes } from 'date-fns';
+import { addDays, addMinutes, constructNow, formatRelative, isBefore, roundToNearestMinutes } from 'date-fns';
 import { StorageService, TimerData, TimerId } from '../util/storage.service';
 import { Group } from '../model/group';
-import { ToReadableDateTimePipe } from '../util/pipe/toReadableDateTime.pipe';
 
 @Component({
   selector: 'app-landing',
@@ -19,7 +18,6 @@ import { ToReadableDateTimePipe } from '../util/pipe/toReadableDateTime.pipe';
     MatTimepickerModule,
     ReactiveFormsModule,
     RouterLink,
-    ToReadableDateTimePipe
   ],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
@@ -75,5 +73,9 @@ export class LandingComponent implements OnInit {
     });
 
     await this.router.navigate([ 'timer', timerId ]);
+  }
+
+  protected toReadableTime(datetime: Date): string {
+    return formatRelative(datetime, constructNow(undefined));
   }
 }
