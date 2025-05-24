@@ -120,18 +120,25 @@ export class TimerComponent implements OnInit, OnDestroy {
     this.saveData();
   }
 
-  updateGroup(delta: number) {
-    const nextIndex = this.groupIndex() + delta;
-    if (!(0 <= nextIndex && nextIndex <= this.nbGroups - 1)) {
+  selectGroup(index: number) {
+    if (!(0 <= index && index <= this.nbGroups - 1)) {
       return;
     }
     const wasPaused = this.isPaused();
     this.pause();
-    this.groupIndex.set(nextIndex);
+    this.groupIndex.set(index);
     if (!wasPaused) {
       this.resume();
     }
     this.saveData();
+  }
+
+  nextGroup() {
+    this.selectGroup(this.groupIndex() + 1);
+  }
+
+  previousGroup() {
+    this.selectGroup(this.groupIndex() - 1);
   }
 
   protected async backToLanding(ev: MouseEvent) {
