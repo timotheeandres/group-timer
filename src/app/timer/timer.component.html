@@ -25,11 +25,21 @@
 @if (previousGroupsData().length) {
   <h2>Previous groups:</h2>
   <mat-table [dataSource]="previousGroupsData()">
-    <mat-text-column name="id" headerText="Group #"></mat-text-column>
+    <ng-container matColumnDef="id">
+      <th mat-header-cell *matHeaderCellDef>Group</th>
+      <td mat-cell *matCellDef="let data; let i = index;">{{ data.name ?? i + 1 }}</td>
+    </ng-container>
 
     <ng-container matColumnDef="duration">
       <th mat-header-cell *matHeaderCellDef>Time</th>
-      <td mat-cell *matCellDef="let data"> {{ data.duration | toTime }}</td>
+      <td mat-cell *matCellDef="let data">{{ data.duration | toTime }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Time</th>
+      <td mat-cell *matCellDef="let data; let i = index;">
+        <button (click)="renameGroup(data, i)">Rename</button>
+      </td>
     </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="previousGroupsColumns"></tr>

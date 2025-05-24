@@ -61,7 +61,7 @@ export class TimerComponent implements OnInit, OnDestroy {
     })).slice(0, this.groupIndex()).reverse();
   });
 
-  protected readonly previousGroupsColumns = [ 'id', 'duration' ] as const;
+  protected readonly previousGroupsColumns = [ 'id', 'duration', 'actions' ] as const;
 
   protected groups: Array<Group> = [];
   protected nbGroups: number = 0;
@@ -151,6 +151,12 @@ export class TimerComponent implements OnInit, OnDestroy {
     return this.router.navigate([ '/' ]);
   }
 
+  protected renameGroup(group: Group, index: number): void {
+    const newName = prompt(`New group name for group ${group.name ? `"${group.name}"` : index + 1}:`);
+    group.name = (newName ?? group.name) || undefined;
+    this.saveData();
+  }
+
   private computeRemainingDurationForWaitingGroups(currentGroupDuration: number): number {
     const now = constructNow(undefined);
     const nbGroupsWaiting = this.nbGroups - this.groupIndex() - 1;
@@ -185,8 +191,12 @@ export class TimerComponent implements OnInit, OnDestroy {
       const data: SaveData = JSON.parse(rawData);
       const deadline = parseJSON(data.deadline);
       if (data.groups.length === this.nbGroups && isEqual(deadline, this.deadline)) {
-        this.groups = data.groups.map(groupData =>
-          new Group(groupData.elapsedTimeMs, groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined));
+        this.groups = data.groups.map(groupData => {
+          const elapsedTime = groupData.elapsedTimeMs;
+          const lastResume = groupData.lastResume !== undefined ? parseJSON(groupData.lastResume) : undefined;
+          const name = groupData.name;
+          return new Group(elapsedTime, lastResume, name);
+        });
         this.deadline = deadline;
         this.isPaused.set(data.isPaused);
         this.groupIndex.set(data.groupIndex);
@@ -226,7 +236,7 @@ export class TimerComponent implements OnInit, OnDestroy {
 
 class Group {
   // eslint-disable-next-line no-unused-vars
-  constructor(public elapsedTimeMs: number = 0, public lastResume?: Date) {
+  constructor(public elapsedTimeMs: number = 0, public lastResume?: Date, public name?: string) {
   }
 
   get duration(): number {
@@ -253,7 +263,7 @@ class Group {
 
 
 type SaveData = {
-  groups: Array<{ elapsedTimeMs: number, lastResume?: string }>,
+  groups: Array<{ elapsedTimeMs: number, lastResume?: string, name?: string }>,
   deadline: string,
   isPaused: boolean,
   groupIndex: number
